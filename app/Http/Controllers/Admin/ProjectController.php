@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Project;
+use App\Models\Type;
+use App\Models\Technology;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +27,9 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        return view('admin.projects.create');
+        $typeIds = Type::all();
+        $technologies = Technology::all();
+        return view('admin.projects.create', compact('typeIds', 'technologies'));
     }
 
     /**
@@ -37,7 +41,8 @@ class ProjectController extends Controller
             'title' => ['required', 'unique:projects','min:3', 'max:255'],
             'url' => ['url:https'],
             'content' => ['required', 'min:10'],
-            'image' => ['image']
+            'image' => ['image'],
+            'technologies' => ['exists:technologies,id'],
         ]);
 
         if ($request->hasFile('image')){
@@ -50,6 +55,10 @@ class ProjectController extends Controller
         $newPost->slug = Str::of("$newPost->id " . $data['title'])->slug('-');
         $newPost->save();
 
+        if ($request->has('technologies')){
+            $newProject->technologies()->sync( $request->technologies);
+        }
+
         return redirect()->route('admin.projects.index');
     }
 
@@ -58,7 +67,8 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        return view('admin.projects.show', compact('project'));
+        $technologies = Technology::all();
+        return view('admin.projects.show', compact('project', 'technologies'));
     }
 
     /**
@@ -66,7 +76,9 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
-        return view('admin.projects.edit', compact('project'));
+        $typeIds = Type::all();
+        $technologies = Technology::all();
+        return view('admin.projects.edit', compact('project', 'typeIds', 'technologies'));
     }
 
     /**
@@ -78,7 +90,8 @@ class ProjectController extends Controller
             'title' => ['required', 'min:3', 'max:255', Rule::unique('projects')->ignore($project->id)],
             'url' => ['url:https'],
             'content' => ['required', 'min:10'],
-            'image' => ['image']
+            'image' => ['image'],
+            'technologies' => ['exists:technologies,id'],
         ]);
         $data['slug'] = Str::of("$project->id " . $data['title'])->slug('-');
 
@@ -89,6 +102,10 @@ class ProjectController extends Controller
         }    
 
         $project->update($data);
+
+        if ($request->has('technologies')){
+            $project->technologies()->sync( $request->technologies);
+        }
 
         return redirect()->route('admin.projects.show', compact('project'));
     }
@@ -121,6 +138,7 @@ class ProjectController extends Controller
     {
         $project = Project::onlyTrashed()->findOrFail($slug);
         Storage::delete($project->image);
+        $project->technologies()->detach();
         $project->forceDelete();
 
         return redirect()->route('admin.projects.index');
