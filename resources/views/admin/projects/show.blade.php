@@ -16,6 +16,9 @@
                     <p class="card-text">
                         {{ $project->content }}
                     </p>
+                    <p class="card-text">
+                        {{ $project->type->name }}
+                    </p>
                     <a href="{{ route('admin.projects.edit', $project) }}" class="btn btn-sm btn-success">
                         Edit
                     </a>
